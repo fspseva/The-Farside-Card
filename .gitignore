@@ -8,6 +8,7 @@ dist/
 packages/contracts/out/
 packages/contracts/cache/
 packages/contracts/build/circuits/
+packages/contracts/broadcast/
 
 # ZK artifacts (large)
 *.ptau
@@ -19,6 +20,8 @@ packages/contracts/build/circuits/
 # SQLite
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 
 # Turbo
 .turbo/
