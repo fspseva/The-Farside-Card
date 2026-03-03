@@ -1,6 +1,7 @@
 {
   "name": "stealth-card",
   "private": true,
+  "packageManager": "pnpm@10.4.1",
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
