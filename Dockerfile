@@ -27,4 +27,5 @@ RUN pnpm --filter @stealth-card/sdk build
 
 EXPOSE 3001
 
-CMD ["node", "--import", "tsx", "packages/backend/src/index.ts"]
+WORKDIR /app/packages/backend
+CMD ["node", "--import", "tsx", "src/index.ts"]
