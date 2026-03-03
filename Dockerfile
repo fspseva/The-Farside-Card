@@ -1,6 +1,7 @@
 FROM node:20-slim
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN npm install -g tsx
 
 WORKDIR /app
 
@@ -22,7 +23,7 @@ COPY packages/backend/ packages/backend/
 COPY packages/contracts/build/circuits/withdraw_final.zkey packages/contracts/build/circuits/
 COPY packages/contracts/build/circuits/withdraw_js/withdraw.wasm packages/contracts/build/circuits/withdraw_js/
 
-# Build SDK (backend runs via tsx, no tsc needed)
+# Build SDK
 RUN pnpm --filter @stealth-card/sdk build
 
 EXPOSE 3001
