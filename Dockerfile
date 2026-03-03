@@ -1,7 +1,6 @@
 FROM node:20-slim
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
-RUN npm install -g tsx
 
 WORKDIR /app
 
