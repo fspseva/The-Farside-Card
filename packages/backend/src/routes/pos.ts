@@ -5,7 +5,7 @@ import { broadcast } from "../ws/broadcast.js";
 const router = Router();
 
 // POST /api/pos/charge
-router.post("/pos/charge", (req, res) => {
+router.post("/pos/charge", async (req, res) => {
   try {
     const { cardId, merchant, amount, description } = req.body;
 
@@ -16,7 +16,7 @@ router.post("/pos/charge", (req, res) => {
     }
 
     const amountUnits = Math.round(amount * 1_000_000);
-    const card = getCard(cardId);
+    const card = await getCard(cardId);
 
     if (!card) {
       return res.status(404).json({ error: "Card not found" });
@@ -26,9 +26,9 @@ router.post("/pos/charge", (req, res) => {
       return res.status(400).json({ error: "Insufficient balance" });
     }
 
-    updateCardBalance(cardId, -amountUnits);
+    await updateCardBalance(cardId, -amountUnits);
 
-    addTransaction(
+    await addTransaction(
       cardId,
       "purchase",
       amountUnits,

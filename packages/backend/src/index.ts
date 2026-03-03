@@ -8,6 +8,7 @@ import posRouter from "./routes/pos.js";
 import relayRouter from "./routes/relay.js";
 import { initPoseidon } from "./services/poseidon.js";
 import { syncMerkleTreesFromChain } from "./services/merkleTree.js";
+import { initDb } from "./db/schema.js";
 
 dotenv.config({ path: "../../.env" });
 
@@ -26,6 +27,9 @@ app.get("/api/health", (_req, res) => {
 });
 
 async function start() {
+  // Initialize Neon Postgres
+  await initDb();
+
   // Initialize Poseidon hash (must complete before any routes use it)
   await initPoseidon();
 

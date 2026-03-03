@@ -7,13 +7,17 @@ dist/
 # Foundry
 packages/contracts/out/
 packages/contracts/cache/
-packages/contracts/build/circuits/
 packages/contracts/broadcast/
+
+# ZK circuits — ignore all, then whitelist what the backend needs
+packages/contracts/build/circuits/*
+!packages/contracts/build/circuits/withdraw_final.zkey
+!packages/contracts/build/circuits/withdraw_js/
+packages/contracts/build/circuits/withdraw_js/*
+!packages/contracts/build/circuits/withdraw_js/withdraw.wasm
 
 # ZK artifacts (large)
 *.ptau
-*.zkey
-*.wasm
 *.r1cs
 *.sym
 

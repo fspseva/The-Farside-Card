@@ -16,6 +16,12 @@ import {
 } from "../db/schema.js";
 import { broadcast } from "../ws/broadcast.js";
 import { poseidonHash2 } from "../services/poseidon.js";
+import {
+  getPublicClient,
+  getDeployerClient,
+  ADDRESSES,
+  TEST_USDC_ABI,
+} from "../services/contracts.js";
 
 const router = Router();
 
@@ -29,14 +35,14 @@ function hexToBytes(hex: string): Uint8Array {
 }
 
 // POST /api/card/create
-router.post("/card/create", (req, res) => {
+router.post("/card/create", async (req, res) => {
   try {
     const cardId = crypto.randomUUID();
     const keys = generateStealthKeys();
     const meta = toStealthMetaAddress(keys);
     const metaUri = encodeStealthMetaAddress(meta);
 
-    createCard(
+    await createCard(
       cardId,
       bytesToHex(keys.spendingPubKey),
       bytesToHex(keys.viewingKey),
@@ -53,9 +59,9 @@ router.post("/card/create", (req, res) => {
 });
 
 // GET /api/card/:id
-router.get("/card/:id", (req, res) => {
+router.get("/card/:id", async (req, res) => {
   try {
-    const card = getCard(req.params.id);
+    const card = await getCard(req.params.id);
     if (!card) return res.status(404).json({ error: "Card not found" });
     res.json({
       id: card.id,
@@ -68,9 +74,9 @@ router.get("/card/:id", (req, res) => {
 });
 
 // GET /api/card/:id/transactions
-router.get("/card/:id/transactions", (req, res) => {
+router.get("/card/:id/transactions", async (req, res) => {
   try {
-    const txs = getTransactions(req.params.id);
+    const txs = await getTransactions(req.params.id);
     res.json(txs);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -78,9 +84,9 @@ router.get("/card/:id/transactions", (req, res) => {
 });
 
 // POST /api/card/:id/topup
-router.post("/card/:id/topup", (req, res) => {
+router.post("/card/:id/topup", async (req, res) => {
   try {
-    const card = getCard(req.params.id);
+    const card = await getCard(req.params.id);
     if (!card) return res.status(404).json({ error: "Card not found" });
 
     const { denomination, chainId = 84532 } = req.body;
@@ -105,7 +111,7 @@ router.post("/card/:id/topup", (req, res) => {
     const commitment = poseidonHash2(nullifier, secret);
     const commitmentStr = commitment.toString();
 
-    createDeposit(
+    await createDeposit(
       card.id,
       commitmentStr,
       nullifier.toString(),
@@ -131,6 +137,31 @@ router.post("/card/:id/topup", (req, res) => {
       stealthAddress,
       denomination,
     });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/mint-test-usdc - Mint test USDC to any address (testnet only)
+router.post("/mint-test-usdc", async (req, res) => {
+  try {
+    const { address } = req.body;
+    if (!address) return res.status(400).json({ error: "Missing address" });
+
+    const deployerClient = getDeployerClient();
+    const publicClient = getPublicClient();
+
+    const amount = 1000_000_000n; // 1000 USDC (6 decimals)
+
+    const hash = await deployerClient.writeContract({
+      address: ADDRESSES.TestUSDC,
+      abi: TEST_USDC_ABI,
+      functionName: "mint",
+      args: [address as `0x${string}`, amount],
+    });
+    await publicClient.waitForTransactionReceipt({ hash });
+
+    res.json({ success: true, txHash: hash, amount: 1000 });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
