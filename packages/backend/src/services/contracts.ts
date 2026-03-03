@@ -12,10 +12,10 @@ import { baseSepolia } from "viem/chains";
 
 // --- Deployed addresses (Base Sepolia) ---
 export const ADDRESSES = {
-  TestUSDC: "0xF99b0dF2cfe19a4B016205bc3664c57BE1F91bE1" as const,
+  USDC: "0x036CbD53842c5426634e7929541eC2318f3dCF7e" as const, // Circle USDC
   Groth16Verifier: "0xDB6576f9126414cA0c58E704d5fDFeC89BCbEfB9" as const,
-  StealthPool10: "0x95Ae9FE47Ad329846c4339814A1615d802560548" as const,
-  StealthPool100: "0x4D54039cfE96AA7902f0b9F56E5966CA419D2625" as const,
+  StealthPool10: "0x9CD59E5eBC6c9C5188F115Cb7697293E77734C1d" as const,
+  StealthPool100: "0x9284556402A696BaEb27e160d210eF73C1057969" as const,
   ERC5564Announcer: "0x57c914b7c433755360a302Aa8Ff2c9cAcA15800A" as const,
   ERC6538Registry: "0xd1f9e9639a07B14992f8F4874A12495D8907bBf1" as const,
 };
@@ -32,8 +32,7 @@ export const STEALTH_POOL_ABI = parseAbi([
   "event Withdrawal(address to, uint256 nullifierHash, address indexed relayer, uint256 fee)",
 ]);
 
-export const TEST_USDC_ABI = parseAbi([
-  "function mint(address to, uint256 amount) external",
+export const ERC20_ABI = parseAbi([
   "function approve(address spender, uint256 amount) external returns (bool)",
   "function balanceOf(address account) external view returns (uint256)",
   "function transfer(address to, uint256 amount) external returns (bool)",

@@ -17,10 +17,7 @@ import {
 import { broadcast } from "../ws/broadcast.js";
 import { poseidonHash2 } from "../services/poseidon.js";
 import {
-  getPublicClient,
-  getDeployerClient,
   ADDRESSES,
-  TEST_USDC_ABI,
 } from "../services/contracts.js";
 
 const router = Router();
@@ -137,31 +134,6 @@ router.post("/card/:id/topup", async (req, res) => {
       stealthAddress,
       denomination,
     });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// POST /api/mint-test-usdc - Mint test USDC to any address (testnet only)
-router.post("/mint-test-usdc", async (req, res) => {
-  try {
-    const { address } = req.body;
-    if (!address) return res.status(400).json({ error: "Missing address" });
-
-    const deployerClient = getDeployerClient();
-    const publicClient = getPublicClient();
-
-    const amount = 1000_000_000n; // 1000 USDC (6 decimals)
-
-    const hash = await deployerClient.writeContract({
-      address: ADDRESSES.TestUSDC,
-      abi: TEST_USDC_ABI,
-      functionName: "mint",
-      args: [address as `0x${string}`, amount],
-    });
-    await publicClient.waitForTransactionReceipt({ hash });
-
-    res.json({ success: true, txHash: hash, amount: 1000 });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

@@ -17,7 +17,7 @@ import {
   getPoolAddress,
   ADDRESSES,
   STEALTH_POOL_ABI,
-  TEST_USDC_ABI,
+  ERC20_ABI,
 } from "./contracts.js";
 import { parseEventLogs } from "viem";
 
@@ -26,7 +26,7 @@ import { parseEventLogs } from "viem";
  *
  * Flow:
  * 1. Compute Poseidon commitment = Poseidon(nullifier, secret)
- * 2. Mint TestUSDC to deployer (relayer provides pool liquidity on testnet)
+ * 2. Deployer must already have USDC (funded by user's on-chain deposit)
  * 3. Deployer approves + deposits commitment into StealthPool
  * 4. Parse Deposit event -> get leafIndex
  * 5. Build Merkle proof (pathElements + pathIndices)
@@ -67,24 +67,24 @@ export async function processDeposit(cardId: string, stealthAddress: string) {
   console.log(`[Relayer] Denomination: ${denomination} (${denomination / 1_000_000} USDC)`);
 
   try {
-    // --- Step 1: Mint TestUSDC to deployer for pool deposit ---
+    // --- Step 1: Check deployer USDC balance ---
     broadcast({
       type: "deposit_status",
       cardId,
       status: "pooled",
       stealthAddress,
     });
-    await updateDepositStatus(deposit.commitment, "minting");
 
-    console.log(`[Relayer] Minting ${denomination} TestUSDC to deployer for pool deposit...`);
-    const mintHash = await deployerClient.writeContract({
-      address: ADDRESSES.TestUSDC,
-      abi: TEST_USDC_ABI,
-      functionName: "mint",
-      args: [deployerAddress, BigInt(denomination)],
+    const deployerBalance = await publicClient.readContract({
+      address: ADDRESSES.USDC,
+      abi: ERC20_ABI,
+      functionName: "balanceOf",
+      args: [deployerAddress],
     });
-    await publicClient.waitForTransactionReceipt({ hash: mintHash });
-    console.log(`[Relayer] Mint tx: ${mintHash}`);
+    console.log(`[Relayer] Deployer USDC balance: ${deployerBalance}`);
+    if (deployerBalance < BigInt(denomination)) {
+      throw new Error(`Deployer has insufficient USDC: ${deployerBalance} < ${denomination}`);
+    }
 
     // --- Step 2: Approve pool + deposit commitment ---
     await updateDepositStatus(deposit.commitment, "depositing");
@@ -97,13 +97,25 @@ export async function processDeposit(cardId: string, stealthAddress: string) {
 
     console.log(`[Relayer] Approving pool to spend USDC...`);
     const approveHash = await deployerClient.writeContract({
-      address: ADDRESSES.TestUSDC,
-      abi: TEST_USDC_ABI,
+      address: ADDRESSES.USDC,
+      abi: ERC20_ABI,
       functionName: "approve",
       args: [poolAddress, BigInt(denomination)],
     });
     await publicClient.waitForTransactionReceipt({ hash: approveHash });
     console.log(`[Relayer] Approve tx: ${approveHash}`);
+
+    // Verify allowance before deposit
+    const allowance = await publicClient.readContract({
+      address: ADDRESSES.USDC,
+      abi: ERC20_ABI,
+      functionName: "allowance",
+      args: [deployerAddress, poolAddress],
+    });
+    console.log(`[Relayer] Allowance after approve: ${allowance}`);
+    if (allowance < BigInt(denomination)) {
+      throw new Error(`Allowance insufficient after approve: ${allowance} < ${denomination}`);
+    }
 
     console.log(`[Relayer] Depositing commitment into pool...`);
     const depositHash = await deployerClient.writeContract({

@@ -13,7 +13,7 @@ import { parseAbi, formatUnits } from "viem";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
 
-const USDC_ADDRESS = "0xF99b0dF2cfe19a4B016205bc3664c57BE1F91bE1" as const;
+const USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e" as const; // Circle USDC on Base Sepolia
 const USDC_ABI = parseAbi([
   "function transfer(address to, uint256 amount) external returns (bool)",
   "function balanceOf(address account) external view returns (uint256)",
@@ -206,7 +206,16 @@ export function TopUpModal({ cardId, onClose }: TopUpModalProps) {
                 </div>
                 {!hasEnough && (
                   <p className="text-amber-400 text-sm mb-3 text-center">
-                    Insufficient USDC balance. Mint test tokens first.
+                    Insufficient USDC balance. Get USDC from the{" "}
+                    <a
+                      href="https://faucet.circle.com/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-amber-300"
+                    >
+                      Circle Faucet
+                    </a>
+                    .
                   </p>
                 )}
                 <button
