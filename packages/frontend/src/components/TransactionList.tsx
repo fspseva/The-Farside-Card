@@ -6,11 +6,40 @@ interface Transaction {
   amount: number;
   merchant: string | null;
   description: string;
+  tx_hash: string | null;
+  chain_id: number | null;
   created_at: string;
 }
 
 interface TransactionListProps {
   transactions: Transaction[];
+}
+
+const EXPLORER_BY_CHAIN: Record<number, string> = {
+  84532: "https://sepolia.basescan.org/tx/",
+  11155111: "https://sepolia.etherscan.io/tx/",
+  421614: "https://sepolia.arbiscan.io/tx/",
+};
+
+function ExplorerLink({ txHash, chainId }: { txHash: string; chainId: number | null }) {
+  const baseUrl = chainId ? EXPLORER_BY_CHAIN[chainId] : null;
+  if (!baseUrl) return null;
+
+  return (
+    <a
+      href={`${baseUrl}${txHash}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center text-gray-400 hover:text-white transition ml-1"
+      title="View on block explorer"
+    >
+      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+        <polyline points="15 3 21 3 21 9" />
+        <line x1="10" y1="14" x2="21" y2="3" />
+      </svg>
+    </a>
+  );
 }
 
 export function TransactionList({ transactions }: TransactionListProps) {
@@ -43,6 +72,9 @@ export function TransactionList({ transactions }: TransactionListProps) {
               <p className="text-sm font-medium">
                 {tx.merchant ||
                   (tx.type === "deposit" ? "Top Up" : "Purchase")}
+                {tx.type === "deposit" && tx.tx_hash && (
+                  <ExplorerLink txHash={tx.tx_hash} chainId={tx.chain_id} />
+                )}
               </p>
               <p className="text-xs text-gray-400">{tx.description}</p>
             </div>

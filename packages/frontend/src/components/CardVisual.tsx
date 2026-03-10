@@ -41,7 +41,7 @@ export function CardVisual({
           <p className="text-lg tracking-[0.2em] font-mono text-white/70">{cardNumber}</p>
           <div className="flex justify-between items-end mt-2">
             <p className="text-sm text-white/50 uppercase">{name}</p>
-            <p className="text-xs text-white/30">PRIVACY POOL</p>
+            <p className="text-xs text-white/30">powered by Haven</p>
           </div>
         </div>
       </div>

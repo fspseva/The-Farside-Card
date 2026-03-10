@@ -5,11 +5,13 @@ import { useState } from "react";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 interface KYCFormProps {
-  onComplete: (cardId: string, cardNumber: string) => void;
+  onComplete: (cardId: string, cardNumber: string, name: string) => void;
 }
 
 export function KYCForm({ onComplete }: KYCFormProps) {
   const [loading, setLoading] = useState(false);
+
+  const [name, setName] = useState("John Doe");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +24,7 @@ export function KYCForm({ onComplete }: KYCFormProps) {
         body: JSON.stringify({}),
       });
       const data = await res.json();
-      onComplete(data.cardId, data.cardNumber);
+      onComplete(data.cardId, data.cardNumber, name);
     } catch (error) {
       console.error("Failed to create card:", error);
     } finally {
@@ -38,7 +40,8 @@ export function KYCForm({ onComplete }: KYCFormProps) {
           <label className="block text-sm text-gray-400 mb-1">Full Name</label>
           <input
             type="text"
-            defaultValue="John Doe"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-slate-500"
           />
         </div>

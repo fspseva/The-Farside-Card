@@ -279,7 +279,8 @@ export async function processDeposit(cardId: string, stealthAddress: string) {
       amount,
       null,
       `Top-up ${amount / 1_000_000} USDC via privacy pool`,
-      withdrawHash
+      withdrawHash,
+      chainId
     );
 
     const updatedCard = await getCard(cardId);
@@ -301,6 +302,8 @@ export async function processDeposit(cardId: string, stealthAddress: string) {
         amount,
         merchant: null,
         description: `Top-up ${amount / 1_000_000} USDC via privacy pool`,
+        tx_hash: withdrawHash,
+        chain_id: chainId,
         created_at: new Date().toISOString(),
       },
     });

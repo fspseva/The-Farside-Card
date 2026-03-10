@@ -28,6 +28,7 @@ export async function initDb() {
       merchant TEXT,
       description TEXT,
       tx_hash TEXT,
+      chain_id INTEGER,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `;
@@ -50,6 +51,11 @@ export async function initDb() {
       withdraw_tx_hash TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
+  `;
+
+  // Add chain_id column to transactions if it doesn't exist
+  await sql`
+    ALTER TABLE transactions ADD COLUMN IF NOT EXISTS chain_id INTEGER
   `;
 
   console.log("[DB] Neon Postgres tables initialized");
@@ -89,11 +95,12 @@ export async function addTransaction(
   amount: number,
   merchant: string | null,
   description: string,
-  txHash: string | null
+  txHash: string | null,
+  chainId?: number | null
 ) {
   await sql`
-    INSERT INTO transactions (card_id, type, amount, merchant, description, tx_hash)
-    VALUES (${cardId}, ${type}, ${amount}, ${merchant}, ${description}, ${txHash})
+    INSERT INTO transactions (card_id, type, amount, merchant, description, tx_hash, chain_id)
+    VALUES (${cardId}, ${type}, ${amount}, ${merchant}, ${description}, ${txHash}, ${chainId ?? null})
   `;
 }
 

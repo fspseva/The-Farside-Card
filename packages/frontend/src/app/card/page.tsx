@@ -16,16 +16,19 @@ export default function CardPage() {
   const { isConnected } = useAccount();
   const [cardId, setCardId] = useState<string | null>(null);
   const [cardNumber, setCardNumber] = useState("---- ---- ---- ----");
+  const [cardholderName, setCardholderName] = useState("CARD HOLDER");
   const [showTopUp, setShowTopUp] = useState(false);
   const [kycComplete, setKycComplete] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("stealth-card-id");
     const storedNumber = localStorage.getItem("stealth-card-number");
+    const storedName = localStorage.getItem("stealth-card-name");
     if (stored) {
       setCardId(stored);
       setKycComplete(true);
       if (storedNumber) setCardNumber(storedNumber);
+      if (storedName) setCardholderName(storedName);
     }
   }, []);
 
@@ -53,12 +56,14 @@ export default function CardPage() {
 
   useWebSocket(handleWsMessage);
 
-  const handleKycComplete = (id: string, number: string) => {
+  const handleKycComplete = (id: string, number: string, name: string) => {
     setCardId(id);
     setCardNumber(number);
+    setCardholderName(name);
     setKycComplete(true);
     localStorage.setItem("stealth-card-id", id);
     localStorage.setItem("stealth-card-number", number);
+    localStorage.setItem("stealth-card-name", name);
   };
 
   if (!kycComplete) {
@@ -80,7 +85,7 @@ export default function CardPage() {
         />
       </div>
 
-      <CardVisual cardNumber={cardNumber} balance={card?.balance || 0} />
+      <CardVisual cardNumber={cardNumber} balance={card?.balance || 0} name={cardholderName} />
 
       <div className="mt-6 flex gap-3">
         <button
