@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   useAccount,
+  useChainId,
   useWriteContract,
   useWaitForTransactionReceipt,
   useReadContract,
@@ -13,7 +14,12 @@ import { parseAbi, formatUnits } from "viem";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
 
-const USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e" as const; // Circle USDC on Base Sepolia
+// Circle USDC addresses per chain
+const USDC_BY_CHAIN: Record<number, `0x${string}`> = {
+  84532: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",   // Base Sepolia
+  11155111: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", // Eth Sepolia
+  421614: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",   // Arb Sepolia
+};
 const USDC_ABI = parseAbi([
   "function transfer(address to, uint256 amount) external returns (bool)",
   "function balanceOf(address account) external view returns (uint256)",
@@ -35,6 +41,7 @@ type DepositStatus =
 
 export function TopUpModal({ cardId, onClose }: TopUpModalProps) {
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
   const [denomination, setDenomination] = useState<10 | 100>(10);
   const [stealthAddress, setStealthAddress] = useState<string | null>(null);
   const [status, setStatus] = useState<DepositStatus>("idle");
@@ -43,15 +50,17 @@ export function TopUpModal({ cardId, onClose }: TopUpModalProps) {
   const stealthRef = useRef<string | null>(null);
   const relayTriggered = useRef(false);
 
+  const usdcAddress = USDC_BY_CHAIN[chainId];
+
   const { writeContractAsync } = useWriteContract();
 
   // Read user's USDC balance
   const { data: usdcBalance, refetch: refetchBalance } = useReadContract({
-    address: USDC_ADDRESS,
+    address: usdcAddress,
     abi: USDC_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    query: { enabled: !!address },
+    query: { enabled: !!address && !!usdcAddress },
   });
 
   // Watch for tx receipt
@@ -129,7 +138,7 @@ export function TopUpModal({ cardId, onClose }: TopUpModalProps) {
       // Step 2: Transfer USDC from wallet to stealth address
       setStatus("sending");
       const hash = await writeContractAsync({
-        address: USDC_ADDRESS,
+        address: usdcAddress,
         abi: USDC_ABI,
         functionName: "transfer",
         args: [
