@@ -2,8 +2,8 @@ import { poseidonHash2 } from "./poseidon.js";
 import {
   getPublicClient,
   STEALTH_POOL_ABI,
-  ADDRESSES,
-  getPoolAddress,
+  getAddresses,
+  SUPPORTED_CHAIN_IDS,
 } from "./contracts.js";
 
 const DEPTH = 16;
@@ -140,8 +140,6 @@ export function getTree(poolAddress: string): IncrementalMerkleTree {
 }
 
 export async function syncMerkleTreesFromChain(): Promise<void> {
-  const publicClient = getPublicClient();
-
   const DEPOSIT_EVENT = {
     type: "event" as const,
     name: "Deposit" as const,
@@ -152,53 +150,63 @@ export async function syncMerkleTreesFromChain(): Promise<void> {
     ],
   };
 
-  for (const pool of [ADDRESSES.StealthPool10, ADDRESSES.StealthPool100]) {
-    console.log(`[MerkleTree] Syncing ${pool}...`);
+  for (const chainId of SUPPORTED_CHAIN_IDS) {
+    const addresses = getAddresses(chainId);
+    const publicClient = getPublicClient(chainId);
 
-    // Check on-chain nextIndex to see if there are any deposits
-    const nextIdx = await publicClient.readContract({
-      address: pool,
-      abi: STEALTH_POOL_ABI,
-      functionName: "nextIndex",
-    });
+    for (const pool of [addresses.StealthPool10, addresses.StealthPool100]) {
+      const treeKey = `${chainId}:${pool}`;
+      console.log(`[MerkleTree] Syncing chain ${chainId} pool ${pool}...`);
 
-    if (Number(nextIdx) === 0) {
-      console.log(`[MerkleTree] ${pool}: No deposits yet, skipping`);
-      continue;
+      try {
+        // Check on-chain nextIndex to see if there are any deposits
+        const nextIdx = await publicClient.readContract({
+          address: pool,
+          abi: STEALTH_POOL_ABI,
+          functionName: "nextIndex",
+        });
+
+        if (Number(nextIdx) === 0) {
+          console.log(`[MerkleTree] ${treeKey}: No deposits yet, skipping`);
+          continue;
+        }
+
+        // Scan logs in chunks (Alchemy free tier: max 10 blocks per request)
+        const currentBlock = await publicClient.getBlockNumber();
+        const CHUNK_SIZE = 10n;
+        // Only scan last 2000 blocks to keep startup fast
+        const startBlock = currentBlock > 2000n ? currentBlock - 2000n : 0n;
+
+        const allLogs: any[] = [];
+
+        for (let from = startBlock; from <= currentBlock; from += CHUNK_SIZE) {
+          const to = from + CHUNK_SIZE - 1n > currentBlock ? currentBlock : from + CHUNK_SIZE - 1n;
+          const logs = await publicClient.getLogs({
+            address: pool,
+            event: DEPOSIT_EVENT,
+            fromBlock: from,
+            toBlock: to,
+          });
+          allLogs.push(...logs);
+        }
+
+        const tree = getTree(treeKey);
+
+        // Sort by leafIndex to insert in order
+        const sorted = [...allLogs].sort((a, b) => {
+          const aIdx = Number(a.args.leafIndex!);
+          const bIdx = Number(b.args.leafIndex!);
+          return aIdx - bIdx;
+        });
+
+        for (const log of sorted) {
+          tree.insert(log.args.commitment as bigint);
+        }
+
+        console.log(`[MerkleTree] ${treeKey}: ${sorted.length} deposits synced, root = ${tree.getRoot()}`);
+      } catch (error) {
+        console.warn(`[MerkleTree] Failed to sync chain ${chainId} pool ${pool}:`, error);
+      }
     }
-
-    // Scan logs in chunks (Alchemy free tier: max 10 blocks per request)
-    const currentBlock = await publicClient.getBlockNumber();
-    const CHUNK_SIZE = 10n;
-    // Only scan last 2000 blocks (~1 hour on Base Sepolia) to keep startup fast
-    const startBlock = currentBlock > 2000n ? currentBlock - 2000n : 0n;
-
-    const allLogs: any[] = [];
-
-    for (let from = startBlock; from <= currentBlock; from += CHUNK_SIZE) {
-      const to = from + CHUNK_SIZE - 1n > currentBlock ? currentBlock : from + CHUNK_SIZE - 1n;
-      const logs = await publicClient.getLogs({
-        address: pool,
-        event: DEPOSIT_EVENT,
-        fromBlock: from,
-        toBlock: to,
-      });
-      allLogs.push(...logs);
-    }
-
-    const tree = getTree(pool);
-
-    // Sort by leafIndex to insert in order
-    const sorted = [...allLogs].sort((a, b) => {
-      const aIdx = Number(a.args.leafIndex!);
-      const bIdx = Number(b.args.leafIndex!);
-      return aIdx - bIdx;
-    });
-
-    for (const log of sorted) {
-      tree.insert(log.args.commitment as bigint);
-    }
-
-    console.log(`[MerkleTree] ${pool}: ${sorted.length} deposits synced, root = ${tree.getRoot()}`);
   }
 }

@@ -16,9 +16,6 @@ import {
 } from "../db/schema.js";
 import { broadcast } from "../ws/broadcast.js";
 import { poseidonHash2 } from "../services/poseidon.js";
-import {
-  ADDRESSES,
-} from "../services/contracts.js";
 
 const router = Router();
 

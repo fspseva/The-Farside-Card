@@ -15,9 +15,10 @@ import {
   getDeployerClient,
   getDeployerAddress,
   getPoolAddress,
-  ADDRESSES,
+  getAddresses,
   STEALTH_POOL_ABI,
   ERC20_ABI,
+  DEFAULT_CHAIN_ID,
 } from "./contracts.js";
 import { parseEventLogs } from "viem";
 
@@ -49,21 +50,25 @@ export async function processDeposit(cardId: string, stealthAddress: string) {
     return;
   }
 
-  const publicClient = getPublicClient();
-  const deployerClient = getDeployerClient();
+  const chainId = deposit.chain_id || DEFAULT_CHAIN_ID;
+  const addresses = getAddresses(chainId);
+  const publicClient = getPublicClient(chainId);
+  const deployerClient = getDeployerClient(chainId);
   const deployerAddress = getDeployerAddress();
   const relayerAddress = deployerAddress;
 
   const denomination = deposit.denomination;
-  const poolAddress = getPoolAddress(denomination);
+  const poolAddress = getPoolAddress(denomination, chainId);
   const nullifier = BigInt(deposit.nullifier);
   const secret = BigInt(deposit.secret);
   const commitment = poseidonHash2(nullifier, secret);
   const nullifierHash = poseidonHash1(nullifier);
 
+  console.log(`[Relayer] Chain: ${chainId}`);
   console.log(`[Relayer] Commitment: ${commitment}`);
   console.log(`[Relayer] NullifierHash: ${nullifierHash}`);
   console.log(`[Relayer] Pool: ${poolAddress}`);
+  console.log(`[Relayer] USDC: ${addresses.USDC}`);
   console.log(`[Relayer] Denomination: ${denomination} (${denomination / 1_000_000} USDC)`);
 
   try {
@@ -76,14 +81,14 @@ export async function processDeposit(cardId: string, stealthAddress: string) {
     });
 
     const deployerBalance = await publicClient.readContract({
-      address: ADDRESSES.USDC,
+      address: addresses.USDC,
       abi: ERC20_ABI,
       functionName: "balanceOf",
       args: [deployerAddress],
     });
-    console.log(`[Relayer] Deployer USDC balance: ${deployerBalance}`);
+    console.log(`[Relayer] Deployer USDC balance on chain ${chainId}: ${deployerBalance}`);
     if (deployerBalance < BigInt(denomination)) {
-      throw new Error(`Deployer has insufficient USDC: ${deployerBalance} < ${denomination}`);
+      throw new Error(`Deployer has insufficient USDC on chain ${chainId}: ${deployerBalance} < ${denomination}`);
     }
 
     // --- Step 2: Approve pool + deposit commitment ---
@@ -97,7 +102,7 @@ export async function processDeposit(cardId: string, stealthAddress: string) {
 
     console.log(`[Relayer] Approving pool to spend USDC...`);
     const approveHash = await deployerClient.writeContract({
-      address: ADDRESSES.USDC,
+      address: addresses.USDC,
       abi: ERC20_ABI,
       functionName: "approve",
       args: [poolAddress, BigInt(denomination)],
@@ -107,7 +112,7 @@ export async function processDeposit(cardId: string, stealthAddress: string) {
 
     // Verify allowance before deposit
     const allowance = await publicClient.readContract({
-      address: ADDRESSES.USDC,
+      address: addresses.USDC,
       abi: ERC20_ABI,
       functionName: "allowance",
       args: [deployerAddress, poolAddress],
@@ -147,7 +152,9 @@ export async function processDeposit(cardId: string, stealthAddress: string) {
     await updateDepositTxHashes(deposit.commitment, depositHash);
 
     // --- Step 3: Insert into local Merkle tree ---
-    const tree = getTree(poolAddress);
+    // Use chain-qualified key for the tree
+    const treeKey = `${chainId}:${poolAddress}`;
+    const tree = getTree(treeKey);
     const insertedIndex = tree.insert(commitment);
     console.log(`[Relayer] Inserted into local tree at index ${insertedIndex}`);
 

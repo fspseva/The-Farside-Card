@@ -127,7 +127,7 @@ export function TopUpModal({ cardId, onClose }: TopUpModalProps) {
       const res = await fetch(`${API_URL}/api/card/${cardId}/topup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ denomination }),
+        body: JSON.stringify({ denomination, chainId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to generate stealth address");
