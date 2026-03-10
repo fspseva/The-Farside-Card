@@ -143,7 +143,7 @@ export async function processDeposit(cardId: string, stealthAddress: string) {
     console.log(`[Relayer] Funding stealth address with ETH for gas...`);
     const fundHash = await deployerClient.sendTransaction({
       to: stealthAddress as `0x${string}`,
-      value: parseEther("0.002"),
+      value: parseEther("0.005"),
     });
     await publicClient.waitForTransactionReceipt({ hash: fundHash });
     console.log(`[Relayer] Gas funding tx: ${fundHash}`);
