@@ -9,7 +9,7 @@ import {
   useReadContract,
 } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { parseAbi, formatUnits } from "viem";
+import { parseAbi, formatUnits, parseGwei } from "viem";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
@@ -145,6 +145,9 @@ export function TopUpModal({ cardId, onClose }: TopUpModalProps) {
           data.stealthAddress as `0x${string}`,
           BigInt(denomination) * BigInt(1_000_000),
         ],
+        // Ensure gas fee is high enough for L2s like Arbitrum
+        maxFeePerGas: parseGwei("0.1"),
+        maxPriorityFeePerGas: parseGwei("0.01"),
       });
       setTxHash(hash);
       setStatus("confirming");
