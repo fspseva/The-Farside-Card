@@ -72,7 +72,7 @@ export default function CardPage() {
   return (
     <div className="min-h-screen p-4 max-w-lg mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">My Farside Card</h1>
+        <h1 className="text-2xl font-bold">My Stealth Card</h1>
         <ConnectButton
           accountStatus="avatar"
           chainStatus="icon"

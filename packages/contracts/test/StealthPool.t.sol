@@ -2,12 +2,19 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "../src/TestUSDC.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../src/StealthPool.sol";
 import "../src/Groth16Verifier.sol";
 
+/// @dev Minimal mintable ERC20 for testing only
+contract MockERC20 is ERC20 {
+    constructor() ERC20("Mock USDC", "USDC") {}
+    function mint(address to, uint256 amount) external { _mint(to, amount); }
+    function decimals() public pure override returns (uint8) { return 6; }
+}
+
 contract StealthPoolTest is Test {
-    TestUSDC usdc;
+    MockERC20 usdc;
     Groth16Verifier verifier;
     StealthPool pool;
 
@@ -18,7 +25,12 @@ contract StealthPoolTest is Test {
     uint256 constant DENOMINATION = 100e6; // 100 USDC
 
     function setUp() public {
-        usdc = new TestUSDC();
+        // Deploy PoseidonT3 library and etch its bytecode to the linked address
+        address poseidonLinked = 0x28f5579DA31AfCc0E16ab6E4C4FEC6FD2B9941DB;
+        address deployed = deployCode("PoseidonT3.sol:PoseidonT3");
+        vm.etch(poseidonLinked, deployed.code);
+
+        usdc = new MockERC20();
         verifier = new Groth16Verifier();
         pool = new StealthPool(
             IVerifier(address(verifier)),

@@ -19,7 +19,7 @@ export function CardVisual({
         <div className="flex justify-between items-start">
           <div>
             <p className="text-[10px] text-white/40 uppercase tracking-[0.25em] font-medium">
-              The Farside Card
+              Stealth Crypto Card
             </p>
             <p className="text-2xl font-bold text-white/90 mt-1">${formattedBalance}</p>
           </div>

@@ -10,6 +10,7 @@ libraries = ["lib/poseidon-solidity/contracts/PoseidonT3.sol:PoseidonT3:0x28f557
 [rpc_endpoints]
 base_sepolia = "https://base-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
 arb_sepolia = "https://arb-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
+eth_sepolia = "https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
 
 [etherscan]
 base_sepolia = { key = "${ETHERSCAN_API_KEY}", url = "https://api-sepolia.basescan.org/api" }

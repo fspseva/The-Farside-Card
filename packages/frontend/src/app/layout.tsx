@@ -6,8 +6,8 @@ import { Providers } from "./providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "The Farside Card",
-  description: "Privacy from the other side",
+  title: "Stealth Crypto Card",
+  description: "Privacy-preserving crypto card powered by stealth addresses",
 };
 
 export default function RootLayout({

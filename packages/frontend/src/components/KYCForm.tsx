@@ -32,7 +32,7 @@ export function KYCForm({ onComplete }: KYCFormProps) {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <h2 className="text-2xl font-bold mb-6">Identity Verification</h2>
+      <h2 className="text-2xl font-bold mb-6">ZK KYC Form</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm text-gray-400 mb-1">Full Name</label>

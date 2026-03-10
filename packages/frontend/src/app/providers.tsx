@@ -11,7 +11,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 import { useState } from "react";
 
 const config = getDefaultConfig({
-  appName: "The Farside Card",
+  appName: "Stealth Crypto Card",
   projectId: "stealth-card-demo",
   chains: [baseSepolia, arbitrumSepolia],
   transports: {

@@ -3,9 +3,9 @@ import Link from "next/link";
 export default function Home() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-8">
-      <h1 className="text-4xl font-bold tracking-tight">The Farside Card</h1>
+      <h1 className="text-4xl font-bold tracking-tight">Stealth Crypto Card</h1>
       <p className="text-gray-500 text-lg">
-        Privacy from the other side
+        Privacy-preserving crypto card powered by stealth addresses
       </p>
       <div className="flex gap-4">
         <Link
@@ -21,6 +21,12 @@ export default function Home() {
           POS Terminal
         </Link>
       </div>
+      <p className="absolute bottom-6 text-xs text-white/30">
+        powered by{" "}
+        <a href="https://haven.hn" target="_blank" rel="noopener noreferrer" className="underline hover:text-white/50 transition">
+          haven.hn
+        </a>
+      </p>
     </div>
   );
 }

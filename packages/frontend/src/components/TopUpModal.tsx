@@ -226,7 +226,7 @@ export function TopUpModal({ cardId, onClose }: TopUpModalProps) {
                   Deposit ${denomination} USDC
                 </button>
                 <p className="text-xs text-gray-500 mt-3 text-center">
-                  USDC is sent to a stealth address, then mixed through a
+                  USDC is sent to a stealth address, then routed through a
                   privacy pool via ZK proof
                 </p>
               </>
