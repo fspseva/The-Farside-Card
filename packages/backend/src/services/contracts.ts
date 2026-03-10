@@ -87,6 +87,12 @@ const CHAIN_CONFIG: Record<number, { chain: Chain; rpcPath: string; fallback: st
   421614: { chain: arbitrumSepolia as Chain, rpcPath: "arb-sepolia", fallback: "https://sepolia-rollup.arbitrum.io/rpc" },
 };
 
+export function getChainConfig(chainId: number) {
+  const config = CHAIN_CONFIG[chainId];
+  if (!config) throw new Error(`Unsupported chain: ${chainId}`);
+  return config;
+}
+
 function getRpcUrl(chainId: number): string {
   const config = CHAIN_CONFIG[chainId];
   if (!config) throw new Error(`Unsupported chain: ${chainId}`);
