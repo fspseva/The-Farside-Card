@@ -18,6 +18,7 @@ interface Transaction {
   merchant: string | null;
   description: string;
   tx_hash: string | null;
+  chain_id: number | null;
   created_at: string;
 }
 
