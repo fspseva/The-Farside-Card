@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider, http } from "wagmi";
-import { baseSepolia, arbitrumSepolia } from "wagmi/chains";
+import { baseSepolia, arbitrumSepolia, sepolia } from "wagmi/chains";
 import {
   RainbowKitProvider,
   getDefaultConfig,
@@ -13,9 +13,10 @@ import { useState } from "react";
 const config = getDefaultConfig({
   appName: "Stealth Crypto Card",
   projectId: "stealth-card-demo",
-  chains: [baseSepolia, arbitrumSepolia],
+  chains: [baseSepolia, sepolia, arbitrumSepolia],
   transports: {
     [baseSepolia.id]: http(),
+    [sepolia.id]: http(),
     [arbitrumSepolia.id]: http(),
   },
 });
