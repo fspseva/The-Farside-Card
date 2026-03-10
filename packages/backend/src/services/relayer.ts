@@ -111,7 +111,7 @@ export async function processDeposit(cardId: string, stealthAddress: string) {
       throw new Error(`Stealth key derivation mismatch: got ${stealthAccount.address}, expected ${stealthAddress}`);
     }
 
-    // --- Step 2: Verify USDC arrived at stealth address ---
+    // --- Step 2: Wait for USDC to arrive at stealth address ---
     broadcast({
       type: "deposit_status",
       cardId,
@@ -119,16 +119,23 @@ export async function processDeposit(cardId: string, stealthAddress: string) {
       stealthAddress,
     });
 
-    const stealthBalance = (await publicClient.readContract({
-      address: addresses.USDC,
-      abi: ERC20_ABI,
-      functionName: "balanceOf",
-      args: [stealthAddress as `0x${string}`],
-    })) as bigint;
-    console.log(`[Relayer] Stealth address USDC balance: ${stealthBalance}`);
+    let stealthBalance = 0n;
+    const MAX_RETRIES = 15;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      stealthBalance = (await publicClient.readContract({
+        address: addresses.USDC,
+        abi: ERC20_ABI,
+        functionName: "balanceOf",
+        args: [stealthAddress as `0x${string}`],
+      })) as bigint;
+      console.log(`[Relayer] Stealth address USDC balance (attempt ${attempt}/${MAX_RETRIES}): ${stealthBalance}`);
 
-    if (stealthBalance < BigInt(denomination)) {
-      throw new Error(`USDC not yet at stealth address: ${stealthBalance} < ${denomination}`);
+      if (stealthBalance >= BigInt(denomination)) break;
+
+      if (attempt === MAX_RETRIES) {
+        throw new Error(`USDC not arrived at stealth address after ${MAX_RETRIES} attempts: ${stealthBalance} < ${denomination}`);
+      }
+      await new Promise((r) => setTimeout(r, 3000)); // wait 3s between checks
     }
 
     // --- Step 3: Fund stealth address with ETH for gas ---
