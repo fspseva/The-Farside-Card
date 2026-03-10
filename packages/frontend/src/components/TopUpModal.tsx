@@ -142,7 +142,7 @@ export function TopUpModal({ cardId, onClose }: TopUpModalProps) {
 
       // Fetch current gas price with 50% buffer to avoid base fee fluctuation on L2s
       const gasPrice = await publicClient!.getGasPrice();
-      const bufferedGasPrice = (gasPrice * 150n) / 100n;
+      const bufferedGasPrice = (gasPrice * BigInt(150)) / BigInt(100);
 
       const hash = await writeContractAsync({
         address: usdcAddress,
