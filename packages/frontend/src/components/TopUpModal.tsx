@@ -7,9 +7,10 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
   useReadContract,
+  usePublicClient,
 } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { parseAbi, formatUnits, parseGwei } from "viem";
+import { parseAbi, formatUnits } from "viem";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
@@ -51,6 +52,7 @@ export function TopUpModal({ cardId, onClose }: TopUpModalProps) {
   const relayTriggered = useRef(false);
 
   const usdcAddress = USDC_BY_CHAIN[chainId];
+  const publicClient = usePublicClient();
 
   const { writeContractAsync } = useWriteContract();
 
@@ -137,6 +139,11 @@ export function TopUpModal({ cardId, onClose }: TopUpModalProps) {
 
       // Step 2: Transfer USDC from wallet to stealth address
       setStatus("sending");
+
+      // Fetch current gas price with 50% buffer to avoid base fee fluctuation on L2s
+      const gasPrice = await publicClient!.getGasPrice();
+      const bufferedGasPrice = (gasPrice * 150n) / 100n;
+
       const hash = await writeContractAsync({
         address: usdcAddress,
         abi: USDC_ABI,
@@ -145,9 +152,7 @@ export function TopUpModal({ cardId, onClose }: TopUpModalProps) {
           data.stealthAddress as `0x${string}`,
           BigInt(denomination) * BigInt(1_000_000),
         ],
-        // Ensure gas fee is high enough for L2s like Arbitrum
-        maxFeePerGas: parseGwei("0.1"),
-        maxPriorityFeePerGas: parseGwei("0.01"),
+        gasPrice: bufferedGasPrice,
       });
       setTxHash(hash);
       setStatus("confirming");
