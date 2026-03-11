@@ -1,5 +1,10 @@
 import { poseidonHash2 } from "./poseidon.js";
-import { getAddresses } from "./contracts.js";
+import {
+  getAddresses,
+  getPublicClient,
+  STEALTH_POOL_ABI,
+  SUPPORTED_CHAIN_IDS,
+} from "./contracts.js";
 import { getDepositedCommitments } from "../db/schema.js";
 
 const DEPTH = 16;
@@ -135,26 +140,174 @@ export function getTree(poolAddress: string): IncrementalMerkleTree {
   return trees.get(key)!;
 }
 
-export async function syncMerkleTreesFromDb(): Promise<void> {
+const DEPOSIT_EVENT = {
+  type: "event" as const,
+  name: "Deposit" as const,
+  inputs: [
+    { name: "commitment", type: "uint256" as const, indexed: true },
+    { name: "leafIndex", type: "uint256" as const, indexed: false },
+    { name: "timestamp", type: "uint256" as const, indexed: false },
+  ],
+};
+
+/**
+ * Sync a single pool's Merkle tree from on-chain Deposit events.
+ * Uses large chunk sizes to minimize RPC calls.
+ */
+async function syncPoolFromChain(
+  chainId: number,
+  pool: `0x${string}`,
+  treeKey: string
+): Promise<void> {
+  const publicClient = getPublicClient(chainId);
+
+  const onChainNextIdx = (await publicClient.readContract({
+    address: pool,
+    abi: STEALTH_POOL_ABI,
+    functionName: "nextIndex",
+  })) as bigint;
+
+  if (Number(onChainNextIdx) === 0) {
+    console.log(`[MerkleTree] ${treeKey}: No deposits on-chain, skipping`);
+    return;
+  }
+
+  const tree = getTree(treeKey);
+  if (tree.nextIndex >= Number(onChainNextIdx)) {
+    console.log(`[MerkleTree] ${treeKey}: Already synced (${tree.nextIndex} leaves)`);
+    return;
+  }
+
+  console.log(
+    `[MerkleTree] ${treeKey}: On-chain has ${onChainNextIdx} deposits, local has ${tree.nextIndex}. Syncing from chain...`
+  );
+
+  // Reset the tree and rebuild entirely from chain events
+  trees.set(treeKey.toLowerCase(), new IncrementalMerkleTree());
+  const freshTree = trees.get(treeKey.toLowerCase())!;
+
+  const currentBlock = await publicClient.getBlockNumber();
+  const CHUNK_SIZE = 5000n;
+  const startBlock = currentBlock > 50000n ? currentBlock - 50000n : 0n;
+
+  const allLogs: any[] = [];
+
+  for (let from = startBlock; from <= currentBlock; from += CHUNK_SIZE) {
+    const to =
+      from + CHUNK_SIZE - 1n > currentBlock ? currentBlock : from + CHUNK_SIZE - 1n;
+    try {
+      const logs = await publicClient.getLogs({
+        address: pool,
+        event: DEPOSIT_EVENT,
+        fromBlock: from,
+        toBlock: to,
+      });
+      allLogs.push(...logs);
+    } catch (e: any) {
+      // If chunk is too large, halve it and retry
+      console.warn(`[MerkleTree] getLogs failed for ${treeKey} blocks ${from}-${to}, retrying with smaller chunks...`);
+      const SMALL_CHUNK = 1000n;
+      for (let sf = from; sf <= to; sf += SMALL_CHUNK) {
+        const st = sf + SMALL_CHUNK - 1n > to ? to : sf + SMALL_CHUNK - 1n;
+        try {
+          const logs = await publicClient.getLogs({
+            address: pool,
+            event: DEPOSIT_EVENT,
+            fromBlock: sf,
+            toBlock: st,
+          });
+          allLogs.push(...logs);
+        } catch (e2) {
+          console.warn(`[MerkleTree] getLogs still failed for blocks ${sf}-${st}, skipping`);
+        }
+      }
+    }
+  }
+
+  // Sort by leafIndex and insert in order
+  const sorted = [...allLogs].sort(
+    (a, b) => Number(a.args.leafIndex!) - Number(b.args.leafIndex!)
+  );
+
+  for (const log of sorted) {
+    freshTree.insert(log.args.commitment as bigint);
+  }
+
+  console.log(
+    `[MerkleTree] ${treeKey}: ${sorted.length} deposits synced from chain, root = ${freshTree.getRoot()}`
+  );
+}
+
+/**
+ * Hybrid sync: load from DB first, then verify against on-chain and backfill if needed.
+ */
+export async function syncMerkleTrees(): Promise<void> {
+  // Step 1: Load known deposits from DB
   const deposits = await getDepositedCommitments();
 
   for (const dep of deposits) {
     const chainId = dep.chain_id;
     const denomination = dep.denomination;
     const addresses = getAddresses(chainId);
-    const pool = denomination === 10_000_000 ? addresses.StealthPool10 : addresses.StealthPool100;
+    const pool =
+      denomination === 10_000_000 ? addresses.StealthPool10 : addresses.StealthPool100;
     const treeKey = `${chainId}:${pool}`;
 
     const tree = getTree(treeKey);
     tree.insert(BigInt(dep.commitment));
   }
 
-  // Log summary
+  // Log DB summary
   for (const [key, tree] of trees.entries()) {
-    console.log(`[MerkleTree] ${key}: ${tree.nextIndex} deposits loaded from DB, root = ${tree.getRoot()}`);
+    console.log(`[MerkleTree] ${key}: ${tree.nextIndex} deposits loaded from DB`);
   }
 
   if (deposits.length === 0) {
     console.log(`[MerkleTree] No deposits found in DB`);
+  }
+
+  // Step 2: Verify against on-chain and backfill missing deposits
+  for (const chainId of SUPPORTED_CHAIN_IDS) {
+    const addresses = getAddresses(chainId);
+
+    for (const pool of [addresses.StealthPool10, addresses.StealthPool100]) {
+      const treeKey = `${chainId}:${pool}`;
+
+      try {
+        const publicClient = getPublicClient(chainId);
+        const onChainNextIdx = (await publicClient.readContract({
+          address: pool,
+          abi: STEALTH_POOL_ABI,
+          functionName: "nextIndex",
+        })) as bigint;
+
+        const tree = getTree(treeKey);
+
+        if (tree.nextIndex < Number(onChainNextIdx)) {
+          console.log(
+            `[MerkleTree] ${treeKey}: DB has ${tree.nextIndex} but on-chain has ${onChainNextIdx}. Backfilling from chain...`
+          );
+          await syncPoolFromChain(chainId, pool, treeKey);
+        } else if (tree.nextIndex > 0) {
+          // Verify root matches
+          const onChainRoot = (await publicClient.readContract({
+            address: pool,
+            abi: STEALTH_POOL_ABI,
+            functionName: "getLastRoot",
+          })) as bigint;
+
+          if (tree.getRoot() !== onChainRoot) {
+            console.warn(
+              `[MerkleTree] ${treeKey}: Root mismatch! Local=${tree.getRoot()}, On-chain=${onChainRoot}. Resyncing from chain...`
+            );
+            await syncPoolFromChain(chainId, pool, treeKey);
+          } else {
+            console.log(`[MerkleTree] ${treeKey}: Verified, root matches on-chain`);
+          }
+        }
+      } catch (error) {
+        console.warn(`[MerkleTree] Failed to verify ${treeKey} against chain:`, error);
+      }
+    }
   }
 }

@@ -7,7 +7,7 @@ import balanceRouter from "./routes/balance.js";
 import posRouter from "./routes/pos.js";
 import relayRouter from "./routes/relay.js";
 import { initPoseidon } from "./services/poseidon.js";
-import { syncMerkleTreesFromDb } from "./services/merkleTree.js";
+import { syncMerkleTrees } from "./services/merkleTree.js";
 import { initDb } from "./db/schema.js";
 
 dotenv.config({ path: "../../.env" });
@@ -33,8 +33,8 @@ async function start() {
   // Initialize Poseidon hash (must complete before any routes use it)
   await initPoseidon();
 
-  // Rebuild Merkle trees from DB (survives restarts, no RPC calls)
-  await syncMerkleTreesFromDb();
+  // Rebuild Merkle trees from DB, verify against on-chain, backfill if needed
+  await syncMerkleTrees();
 
   const server = http.createServer(app);
   initWebSocket(server);
