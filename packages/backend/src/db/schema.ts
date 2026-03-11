@@ -152,6 +152,15 @@ export async function getPendingDeposits() {
   return await sql`SELECT * FROM deposits WHERE status = 'pending'`;
 }
 
+export async function getDepositedCommitments() {
+  return await sql`
+    SELECT commitment, leaf_index, chain_id, denomination
+    FROM deposits
+    WHERE leaf_index IS NOT NULL AND status IN ('deposited', 'withdrawn')
+    ORDER BY leaf_index ASC
+  `;
+}
+
 export async function updateDepositTxHashes(
   commitment: string,
   depositTxHash?: string,
