@@ -152,8 +152,16 @@ export async function processDeposit(cardId: string, stealthAddress: string) {
       to: stealthAddress as `0x${string}`,
       value: parseEther("0.005"),
     });
-    await publicClient.waitForTransactionReceipt({ hash: fundHash });
+    await publicClient.waitForTransactionReceipt({ hash: fundHash, confirmations: 2 });
     console.log(`[Relayer] Gas funding tx: ${fundHash}`);
+
+    // Wait for stealth address to reflect the ETH balance
+    for (let i = 0; i < 10; i++) {
+      const ethBal = await publicClient.getBalance({ address: stealthAddress as `0x${string}` });
+      if (ethBal > 0n) break;
+      console.log(`[Relayer] Waiting for stealth ETH balance to reflect (attempt ${i + 1})...`);
+      await new Promise((r) => setTimeout(r, 2000));
+    }
 
     // --- Step 4: Stealth address approves + deposits into pool ---
     const alchemyKey = process.env.ALCHEMY_API_KEY;
