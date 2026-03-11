@@ -156,7 +156,7 @@ export async function getDepositedCommitments() {
   return await sql`
     SELECT commitment, leaf_index, chain_id, denomination
     FROM deposits
-    WHERE leaf_index IS NOT NULL AND status IN ('deposited', 'withdrawn')
+    WHERE leaf_index IS NOT NULL
     ORDER BY leaf_index ASC
   `;
 }
